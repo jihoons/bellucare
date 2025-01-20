@@ -1,8 +1,12 @@
+import 'package:bellucare/router.dart';
 import 'package:bellucare/service/device_info_service.dart';
 import 'package:bellucare/service/health_service.dart';
 import 'package:bellucare/service/permission_service.dart';
+import 'package:bellucare/style/colors.dart';
 import 'package:bellucare/utils/logger.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,13 +29,35 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    return ProviderScope(
+        child: MaterialApp.router(
+          title: "벨유케어",
+          localizationsDelegates: [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: [
+            Locale('en', ''), // English, no country code
+            Locale('ko', ''), // Korean, no country code
+          ],
+          theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.white),
+              appBarTheme: const AppBarTheme(
+                  backgroundColor: mainBackgroundColor,
+                  surfaceTintColor: mainBackgroundColor,
+                  foregroundColor: mainBackgroundColor,
+                  iconTheme: IconThemeData(
+                      color: Colors.white
+                  )
+              ),
+              bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+                backgroundColor: mainBackgroundColor,
+              ),
+              scaffoldBackgroundColor: mainBackgroundColor,
+              useMaterial3: true),
+          routerConfig: createRouter(false),
+        )
     );
   }
 }
