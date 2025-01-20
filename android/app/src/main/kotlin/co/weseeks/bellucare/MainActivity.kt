@@ -1,4 +1,4 @@
-package co.weseeks.bellucare.bellucare
+package co.weseeks.bellucare
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 

@@ -1,11 +1,13 @@
+import 'package:bellucare/screen/maintabs/health.dart';
+import 'package:bellucare/screen/maintabs/medication.dart';
+import 'package:bellucare/service/call_service.dart';
 import 'package:bellucare/service/health_service.dart';
-import 'package:bellucare/style/colors.dart';
 import 'package:bellucare/style/text.dart';
 import 'package:bellucare/utils/logger.dart';
-import 'package:bellucare/widget/button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -16,16 +18,30 @@ class HomeScreen extends ConsumerStatefulWidget {
   }
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+  String? _currentUuid;
+  int _selectedIndex = 0;
+  late TabController _tabController;
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      debug("change tabIndex ${_tabController.index}");
+      if (_selectedIndex != _tabController.index) {
+        setState(() {
+          _selectedIndex = _tabController.index;
+        });
+      }
+    },);
     WidgetsBinding.instance.addObserver(this);
+    checkAndNavigationCallingPage();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -34,12 +50,60 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     if (state == AppLifecycleState.resumed) {
       var provider = ref.watch(healthProvider);
       debug("resumed ${provider.value?.lastCheckTime}");
+      checkAndNavigationCallingPage(isResumed: true);
       if (provider.hasValue && (DateTime.now().millisecondsSinceEpoch - provider.value!.lastCheckTime) / 1000 > 30) {
           ref.read(healthProvider.notifier).getSteps();
       }
     }
   }
 
+  Future<void> checkAndNavigationCallingPage({bool isResumed = false}) async {
+    debug("checkAndNavigationCallingPage");
+    // IsolateNameServer.lookupPortByName("background")?.send("get state");
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
+      var currentCall = await getCurrentCall();
+      debug("currentCall $currentCall ${context.mounted}");
+      if (currentCall != null) {
+        debug("call state: ${CallService.instance.callState}");
+        var callState = await CallService.instance.getCallState(_currentUuid!);
+        debug("call state shared: $callState");
+        if (CallService.instance.callState == CallState.Connected || callState == "Connected") {
+          context.push("/calling", extra: currentCall);
+        }
+      }
+    });
+  }
+
+  Future<dynamic> getCurrentCall() async {
+    //check current call from pushkit if possible
+    var calls = await FlutterCallkitIncoming.activeCalls();
+    if (calls is List) {
+      if (calls.isNotEmpty) {
+        _currentUuid = calls[0]['id'];
+        return calls[0];
+      } else {
+        // _currentUuid = "";
+        return null;
+      }
+    }
+  }
+
+  Widget getFloatingButton() {
+    if (_selectedIndex == 1) {
+      var medication = ref.watch(medicationProvider);
+      if (medication.hasValue) {
+        return FloatingActionButton.extended(
+          onPressed: () {
+            debug("add medication");
+            ref.read(medicationProvider.notifier).addMedication(Medication(name: "혈압약"));
+          },
+          shape: const CircleBorder(),
+          label: Icon(Icons.medication, size: 24, color: Colors.white,),
+        );
+      }
+    }
+    return SizedBox.shrink();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,48 +112,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         centerTitle: true,
         title: Text("벨유케어", style: MyTextStyle.titleText,),
       ),
-      body: getBody(),
-    );
-  }
-
-  Widget getBody() {
-    var health = ref.watch(healthProvider);
-    return health.when(
-        data: (data) => getHome(data),
-        error: (error, stackTrace) => getSkeleton(),
-        loading: () => getSkeleton(),
-    );
-  }
-
-  Widget getHome(HealthState state) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        state.needInstallHealthConnect ?
-          Button(
-            text: "Health Connect 설치",
-            onTap: () {
-              ref.read(healthProvider.notifier).installSdk();
-            }) : SizedBox.shrink(),
-        Text("걸음수 ${state.steps}", style: MyTextStyle.titleText,)
-      ],
-    );
-  }
-
-  Widget getSkeleton() {
-    return Shimmer.fromColors(
-        baseColor: skeletonBaseColor,
-        highlightColor: skeletonHighlightColor,
-        child: Container(
-          width: MediaQuery.sizeOf(context).width - 32,
-          height: 480,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            color: skeletonBaseColor,
+      body: TabBarView(
+        physics: const NeverScrollableScrollPhysics(),
+        controller: _tabController,
+        children: [
+          HealthMainTab(),
+          MedicationMainTab(),
+        ]
+      ),
+      floatingActionButton: getFloatingButton(),
+      bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.black12,
+        onTap: (index) {
+          debug("log $index");
+          if (_selectedIndex == index) {
+            return;
+          }
+          setState(() {
+            _selectedIndex = index;
+            _tabController.index = index;
+          });
+        },
+        currentIndex: _selectedIndex,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined, color: Colors.white,),
+            label: '홈',
+            // activeIcon: Icon(Icons.home_outlined, color: Colors.red,),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-        )
+          BottomNavigationBarItem(
+            icon: Icon(Icons.medication, color: Colors.white),
+            label: '복용약',
+            // activeIcon: Icon(Icons.medication, color: Colors.red,),
+          ),
+        ]
+      ),
     );
   }
 }

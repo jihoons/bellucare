@@ -1,17 +1,32 @@
+import 'package:bellucare/firebase_options.dart';
 import 'package:bellucare/router.dart';
 import 'package:bellucare/service/device_info_service.dart';
 import 'package:bellucare/service/health_service.dart';
+import 'package:bellucare/service/notification_service.dart';
 import 'package:bellucare/service/permission_service.dart';
 import 'package:bellucare/style/colors.dart';
 import 'package:bellucare/utils/logger.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  initCurrentState();
+  await initCurrentState();
+  await initFirebase();
   runApp(const MyApp());
+}
+
+Future<void> initFirebase() async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  var token = await FirebaseMessaging.instance.getToken();
+  debug("====> $token");
+  NotificationService.instance.init();
 }
 
 Future<void> initCurrentState() async {
@@ -20,6 +35,13 @@ Future<void> initCurrentState() async {
     if (await PermissionService.instance.requestActivity()) {
       await HealthService.instance.configure();
     }
+  }
+  if (!(await Permission.notification.isGranted)) {
+    await FirebaseMessaging.instance.requestPermission(
+      badge: true,
+      alert: true,
+      sound: true,
+    );
   }
 }
 
@@ -62,71 +84,3 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int steps = 0;
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: 8,
-          children: <Widget>[
-            Text(
-              'You have pushed the button this many times: $steps',
-            ),
-            HealthService.instance.needInstall ?
-              InkWell(
-                onTap: () {
-                  HealthService.instance.installSdk();
-                },
-                child: Container(
-                  alignment: Alignment.center,
-                  padding: EdgeInsets.all(8),
-                  width: MediaQuery.sizeOf(context).width - 32,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: Colors.blue,
-                  ),
-                  child: Text("Install"),
-                ),
-              ) : SizedBox.shrink(),
-            InkWell(
-              onTap: () async {
-                var steps = await HealthService.instance.getSteps();
-                debug("steps $steps");
-                setState(() {
-                  this.steps = steps;
-                });
-              },
-              child: Container(
-                alignment: Alignment.center,
-                padding: EdgeInsets.all(8),
-                width: MediaQuery.sizeOf(context).width - 32,
-                height: 48,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.blue,
-                ),
-                child: Text("Get Steps"),
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-}

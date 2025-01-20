@@ -7,17 +7,21 @@ class Button extends StatelessWidget {
     super.key,
     required this.text,
     required this.onTap,
+    this.width,
+    this.height,
   });
   final String text;
   final Function onTap;
+  final double? width;
+  final double? height;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => onTap(),
       child: Container(
-        width: MediaQuery.sizeOf(context).width - 32,
-        height: 24,
+        width: width ?? MediaQuery.sizeOf(context).width - 32,
+        height: height ?? 64,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: Colors.white,

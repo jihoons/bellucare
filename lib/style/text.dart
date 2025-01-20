@@ -19,6 +19,18 @@ class MyTextStyle {
     fontSize: 24,
   );
 
+  static final subTitleText = pretendardFont.copyWith(
+    fontWeight: FontWeight.w400,
+    color: Colors.white,
+    fontSize: 18,
+  );
+
+  static final healthText = pretendardFont.copyWith(
+    fontWeight: FontWeight.w500,
+    color: Colors.white,
+    fontSize: 18,
+  );
+
   static final timeText = pretendardFont.copyWith(
     fontWeight: FontWeight.w700,
     color: Colors.white,
