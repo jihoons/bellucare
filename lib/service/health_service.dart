@@ -25,15 +25,16 @@ class HealthService {
     if (requested) {
       debug("permission ${await (health.hasPermissions([HealthDataType.STEPS]))}");
       DateTime now = DateTime.now();
-      // health.getTotalStepsInInterval(startTime, endTime)
-      // List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(startTime: now.subtract(Duration(days: 2)), endTime: now, types: [HealthDataType.STEPS], recordingMethodsToFilter: [
-      //   RecordingMethod.manual,
-      //   RecordingMethod.automatic,
-      //   RecordingMethod.active,
-      //   RecordingMethod.unknown,
-      // ]);
-      // debug("health data $healthData");
       DateTime today = DateTime(now.year, now.month, now.day);
+      // health.getTotalStepsInInterval(startTime, endTime)
+      List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(startTime: today, endTime: now, types: [HealthDataType.STEPS]);
+      debug("health data[0] ${healthData[0].value}");
+      if (healthData.isNotEmpty && healthData[0].type == HealthDataType.STEPS) {
+        var numericValue = healthData[0].value as NumericHealthValue;
+        return numericValue.numericValue as int;
+      }
+
+      debug("$today ~ $now");
       var steps = await health.getTotalStepsInInterval(today, now);
 
       debug("steps $steps");
