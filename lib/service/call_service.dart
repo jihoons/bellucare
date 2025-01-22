@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:bellucare/service/notification_service.dart';
 import 'package:bellucare/utils/logger.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
@@ -24,6 +25,7 @@ class CallService {
       var id = event!.body["id"];
       if (event.event == Event.actionCallAccept) {
         setState(id, CallState.Connected);
+        await NotificationService.instance.deleteNotification(id);
       } else if (event.event == Event.actionCallDecline) {
         setState(id, CallState.Wait);
       } else if (event.event == Event.actionCallTimeout) {
@@ -32,8 +34,6 @@ class CallService {
         setState(id, CallState.Wait);
       } else if (event.event == Event.actionCallIncoming) {
         setState(id, CallState.Calling);
-
-        // resetAlarms();
       }
       debug("call event: ${event.event} state: ${callState}, id: ${event.body["id"]}");
     },);
@@ -66,12 +66,12 @@ class CallService {
     return prefs.getString(getKey(id));
   }
 
-  Future<void> call(Map<String, dynamic> extra) async {
+  Future<void> call(String id, Map<String, dynamic> extra) async {
     if (callState != CallState.Wait) {
       return;
     }
 
-    var currentUuid = _uuid.v4();
+    var currentUuid = id;
     debug("make call call uuid : $currentUuid");
 
     final params = CallKitParams(
@@ -94,7 +94,7 @@ class CallService {
       headers: <String, dynamic>{'apiKey': 'Abc@123!', 'platform': 'flutter'},
       android: AndroidParams(
         isCustomNotification: true,
-        isShowLogo: true,
+        isShowLogo: false,
         ringtonePath: "empty_ringtone",
         backgroundColor: '#0F295F',
         actionColor: '#4CAF50',

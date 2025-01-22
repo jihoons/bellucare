@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:bellucare/firebase_options.dart';
 import 'package:bellucare/router.dart';
 import 'package:bellucare/service/device_info_service.dart';
@@ -15,8 +17,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initCurrentState();
   await initFirebase();
+  await initCurrentState();
   runApp(const MyApp());
 }
 
@@ -33,7 +35,6 @@ Future<void> initCurrentState() async {
   await PermissionService.instance.checkPermission();
   if (await DeviceInfoService.instance.canUseHealth()) {
     if (await PermissionService.instance.requestActivity()) {
-      await HealthService.instance.configure();
     }
   }
   if (!(await Permission.notification.isGranted)) {
@@ -42,6 +43,10 @@ Future<void> initCurrentState() async {
       alert: true,
       sound: true,
     );
+  }
+
+  if (Platform.isAndroid && !(await Permission.phone.isGranted)) {
+    await Permission.phone.request();
   }
 }
 
@@ -78,7 +83,7 @@ class MyApp extends StatelessWidget {
               ),
               scaffoldBackgroundColor: mainBackgroundColor,
               useMaterial3: true),
-          routerConfig: createRouter(false),
+          routerConfig: createRouter(true),
         )
     );
   }

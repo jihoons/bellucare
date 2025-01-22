@@ -2,6 +2,7 @@ import 'package:bellucare/screen/maintabs/health.dart';
 import 'package:bellucare/screen/maintabs/medication.dart';
 import 'package:bellucare/service/call_service.dart';
 import 'package:bellucare/service/health_service.dart';
+import 'package:bellucare/service/telephone_serivce.dart';
 import 'package:bellucare/style/text.dart';
 import 'package:bellucare/utils/logger.dart';
 import 'package:flutter/material.dart';
@@ -49,11 +50,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed) {
       var provider = ref.watch(healthProvider);
-      debug("resumed ${provider.value?.lastCheckTime}");
-      checkAndNavigationCallingPage(isResumed: true);
-      if (provider.hasValue && (DateTime.now().millisecondsSinceEpoch - provider.value!.lastCheckTime) / 1000 > 30) {
-          ref.read(healthProvider.notifier).getSteps();
+      if (provider.hasValue) {
+        debug("resumed ${provider.value?.lastCheckTime}");
+        if (provider.hasValue && (DateTime.now().millisecondsSinceEpoch - provider.value!.lastCheckTime) / 1000 > 30) {
+          ref.read(healthProvider.notifier).getStatus();
+        }
+        if (provider.value!.needInstallHealthConnect) {
+          ref.read(healthProvider.notifier).checkInstall();
+        }
       }
+      checkAndNavigationCallingPage(isResumed: true);
     }
   }
 
@@ -62,7 +68,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
     // IsolateNameServer.lookupPortByName("background")?.send("get state");
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
       var currentCall = await getCurrentCall();
-      debug("currentCall $currentCall ${context.mounted}");
       if (currentCall != null) {
         debug("call state: ${CallService.instance.callState}");
         var callState = await CallService.instance.getCallState(_currentUuid!);

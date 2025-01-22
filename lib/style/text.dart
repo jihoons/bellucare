@@ -114,4 +114,10 @@ class MyTextStyle {
     color: Colors.white,
     fontSize: 16,
   );
+
+  static final errorText = pretendardFont.copyWith(
+    fontWeight: FontWeight.w600,
+    color: Colors.red,
+    fontSize: 16,
+  );
 }

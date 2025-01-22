@@ -20,6 +20,7 @@ class Button extends StatelessWidget {
     return InkWell(
       onTap: () => onTap(),
       child: Container(
+        alignment: Alignment.center,
         width: width ?? MediaQuery.sizeOf(context).width - 32,
         height: height ?? 64,
         decoration: BoxDecoration(

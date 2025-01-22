@@ -1,35 +1,50 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:appcheck/appcheck.dart';
 import 'package:bellucare/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:health/health.dart';
 
+class HealthStatus {
+  const HealthStatus({
+    this.steps = 0,
+  });
+  final int steps;
+}
+
+const _emptyStatus = HealthStatus();
 class HealthState {
   HealthState({
-    this.steps = 0,
+    this.status = _emptyStatus,
     this.needInstallHealthConnect = false,
     this.lastCheckTime = 0,
+    this.availableSdkStatus = false,
   });
-  int steps = 0;
+  HealthStatus status = HealthStatus();
   int lastCheckTime = 0;
   bool needInstallHealthConnect = false;
+  bool availableSdkStatus = false;
 
   HealthState copyWith({
-    int? steps,
+    HealthStatus? status,
     bool? needInstallHealthConnect,
     int? lastCheckTime,
+    bool? availableSdkStatus,
   }) {
     return HealthState(
-      steps: steps ?? this.steps,
+      status: status ?? this.status,
       needInstallHealthConnect: needInstallHealthConnect ?? this.needInstallHealthConnect,
       lastCheckTime: lastCheckTime ?? this.lastCheckTime,
+      availableSdkStatus: availableSdkStatus ?? this.availableSdkStatus,
     );
   }
 }
 
 class HealthStateNotifier extends AsyncNotifier<HealthState> {
   final _health = Health();
+  final _appChecker = AppCheck();
+  final _healthConnectionPackage = "com.google.android.apps.healthdata";
   Future<void> checkHealthConnectionStatus() async {
     state = await AsyncValue.guard(() async {
       var status = await _health.getHealthConnectSdkStatus();
@@ -39,43 +54,55 @@ class HealthStateNotifier extends AsyncNotifier<HealthState> {
     },);
   }
 
-  Future<void> getSteps() async {
+  Future<void> getStatus() async {
     state = await AsyncValue.guard(() async {
-      var steps = await getStepsFromHealthKit();
-      if (steps == state.value!.steps) {
-        return state.value!;
-      }
-      return state.value!.copyWith(steps: steps);
+      var status = await getStatusFromHealthKit();
+      return state.value!.copyWith(status: status);
     });
   }
 
-  Future<int> getStepsFromHealthKit() async {
-    bool requested = await _health.requestAuthorization([
-      HealthDataType.STEPS,
-    ], permissions: [HealthDataAccess.READ]);
+  final androidTypes = [HealthDataType.STEPS, HealthDataType.ACTIVE_ENERGY_BURNED];
+  final iosTypes = [HealthDataType.STEPS, HealthDataType.ACTIVE_ENERGY_BURNED];
+
+  List<HealthDataType> get _dataTypes => Platform.isAndroid ? androidTypes : iosTypes;
+  Future<HealthStatus> getStatusFromHealthKit() async {
+    debug("request permission");
+    bool requested = false;
+    var dataTypes = _dataTypes;
+    var permissions = dataTypes.map((e) => HealthDataAccess.READ,).toList();
+    try {
+      requested = await _health.requestAuthorization(dataTypes, permissions: permissions);
+    } catch (e) {
+      debug("error $e");
+    }
+    debug("request permission result $requested");
+    int steps = 0;
     if (requested) {
-      debug("permission ${await (_health.hasPermissions([HealthDataType.STEPS]))}");
+      var hasPermission = await _health.hasPermissions(dataTypes);
+      debug("has permission $hasPermission");
       DateTime now = DateTime.now();
       if (state.value != null) {
         state.value!.lastCheckTime = now.millisecondsSinceEpoch;
       }
 
       DateTime today = DateTime(now.year, now.month, now.day);
-      // health.getTotalStepsInInterval(startTime, endTime)
-      List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(startTime: today, endTime: now, types: [HealthDataType.STEPS]);
-      debug("health data[0] ${healthData[0].value}");
-      if (healthData.isNotEmpty && healthData[0].type == HealthDataType.STEPS) {
-        var numericValue = healthData[0].value as NumericHealthValue;
-        return numericValue.numericValue as int;
+
+      // ACTIVE_ENERGY_BURNED 칼로리
+      // EXERCISE_TIME 활동 시간
+      List<HealthDataPoint> healthData = await _health.getHealthDataFromTypes(startTime: today, endTime: now, types: dataTypes);
+      debug("health data ${healthData.isEmpty}");
+      if (healthData.isNotEmpty) {
+        debug("health data count ${healthData.length}");
+        for (var data in healthData) {
+          debug("health data $data");
+          if (data.type == HealthDataType.STEPS) {
+            steps = (data.value as NumericHealthValue).numericValue as int;
+          }
+        }
       }
-
-      debug("$today ~ $now");
-      var steps = await _health.getTotalStepsInInterval(today, now);
-
-      debug("steps $steps");
-      return steps ?? 0;
+      return HealthStatus(steps: steps);
     }
-    return state.value!.steps;
+    return state.value!.status;
   }
 
   Future<void> installSdk() async {
@@ -84,27 +111,47 @@ class HealthStateNotifier extends AsyncNotifier<HealthState> {
     }
   }
 
+  Future<void> checkInstall() async {
+    if (Platform.isAndroid) {
+      state = await AsyncValue.guard(() async {
+        debug("checkInstall");
+        var isAppInstalled = await _appChecker.isAppInstalled("com.google.android.apps.healthdata");
+        debug("checkInstall result ${isAppInstalled}");
+        return state.value!.copyWith(needInstallHealthConnect: !isAppInstalled);
+      },);
+    }
+  }
+
   @override
   FutureOr<HealthState> build() async {
-    debug("----- call build ---->");
+    debug("build start");
     await _health.configure();
+    debug("health configure");
     bool needInstallHealthConnect = false;
+    bool availableSdkStatus = false;
     if (Platform.isAndroid) {
+      var isAppInstalled = await _appChecker.isAppInstalled(_healthConnectionPackage);
+      debug("isAppInstalled: $isAppInstalled");
+      if (!isAppInstalled) {
+        needInstallHealthConnect = true;
+      }
       var status = await _health.getHealthConnectSdkStatus();
-      needInstallHealthConnect = status == HealthConnectSdkStatus.sdkUnavailable;
+      debug("health connect status : $status");
+      availableSdkStatus = status == HealthConnectSdkStatus.sdkAvailable;
     }
+    debug("health connect $needInstallHealthConnect");
 
-    var steps = 0;
+    var status = _emptyStatus;
     var lastCheckTime = 0;
-    if (!needInstallHealthConnect) {
-      steps = await getStepsFromHealthKit();
-      if (steps > 0) {
+    if (!needInstallHealthConnect && availableSdkStatus) {
+      status = await getStatusFromHealthKit();
+      if (status.steps > 0) {
         lastCheckTime = DateTime.now().millisecondsSinceEpoch;
       }
     }
 
     HealthState state = HealthState(
-      steps: steps,
+      status: status,
       needInstallHealthConnect: needInstallHealthConnect,
       lastCheckTime: lastCheckTime,
     );
@@ -115,57 +162,3 @@ class HealthStateNotifier extends AsyncNotifier<HealthState> {
 final healthProvider = AsyncNotifierProvider<HealthStateNotifier, HealthState>(
   () => HealthStateNotifier(),
 );
-
-class HealthService {
-  static final HealthService _instance = HealthService._postConstructor();
-
-  static HealthService get instance => _instance;
-
-  final health = Health();
-  HealthService._postConstructor() {
-    configure();
-  }
-
-  Future<void> configure() async {
-    await health.configure();
-    await checkStatus();
-  }
-
-  Future<int> getSteps() async {
-    bool requested = await health.requestAuthorization([
-      HealthDataType.STEPS,
-    ], permissions: [HealthDataAccess.READ_WRITE]);
-    if (requested) {
-      debug("permission ${await (health.hasPermissions([HealthDataType.STEPS]))}");
-      DateTime now = DateTime.now();
-      DateTime today = DateTime(now.year, now.month, now.day);
-      // health.getTotalStepsInInterval(startTime, endTime)
-      List<HealthDataPoint> healthData = await health.getHealthDataFromTypes(startTime: today, endTime: now, types: [HealthDataType.STEPS]);
-      debug("health data[0] ${healthData[0].value}");
-      if (healthData.isNotEmpty && healthData[0].type == HealthDataType.STEPS) {
-        var numericValue = healthData[0].value as NumericHealthValue;
-        return numericValue.numericValue as int;
-      }
-
-      debug("$today ~ $now");
-      var steps = await health.getTotalStepsInInterval(today, now);
-
-      debug("steps $steps");
-      return steps ?? 0;
-    }
-    return 0;
-  }
-
-  Future<void> checkStatus() async {
-    final status = await health.getHealthConnectSdkStatus();
-    debug("getHealthConnectSdkStatus $status");
-  }
-
-  Future<void> installSdk() async {
-    if (needInstall) {
-      await health.installHealthConnect();
-    }
-  }
-
-  bool get needInstall => (Platform.isAndroid && health.healthConnectSdkStatus == HealthConnectSdkStatus.sdkUnavailable);
-}
