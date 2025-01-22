@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "272795114290",
+    "project_id": "bellucare-a5ca2",
+    "storage_bucket": "bellucare-a5ca2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:272795114290:android:807169adcca79cd9f4d52b",
+        "android_client_info": {
+          "package_name": "co.weseeks.bellucare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA8rAPxegDJKffTx3FIpzh-jDMuWgsaaKY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
