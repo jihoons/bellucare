@@ -12,7 +12,14 @@ class SettingMainTab extends ConsumerWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
+      spacing: 8,
       children: [
+        Button(
+          text: "가족 보기",
+          onTap: () {
+
+          },
+        ),
         Button(
           text: "로그아웃",
           onTap: () async {
