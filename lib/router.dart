@@ -1,6 +1,7 @@
 import 'package:bellucare/screen/call_receive.dart';
 import 'package:bellucare/screen/home.dart';
 import 'package:bellucare/screen/login.dart';
+import 'package:bellucare/screen/medication.dart';
 import 'package:go_router/go_router.dart';
 
 GoRouter createRouter(bool needLogin) {
@@ -18,6 +19,10 @@ GoRouter createRouter(bool needLogin) {
       GoRoute(
         path: '/calling',
         builder: (context, state) => CallReceiveScreen(state: state),
+      ),
+      GoRoute(
+        path: '/medication',
+        builder: (context, state) => MedicationScreen(state: state),
       ),
     ],
   );

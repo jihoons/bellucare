@@ -20,4 +20,8 @@ class StorageService {
   Future<String> getData(String key) async {
     return (await _secureStorage.read(key: key)) ?? "";
   }
+
+  Future<void> removeData(String key) async {
+    await _secureStorage.delete(key: key);
+  }
 }

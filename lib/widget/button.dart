@@ -9,11 +9,13 @@ class Button extends StatelessWidget {
     required this.onTap,
     this.width,
     this.height,
+    this.background,
   });
   final String text;
   final Function onTap;
   final double? width;
   final double? height;
+  final Color? background;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +27,7 @@ class Button extends StatelessWidget {
         height: height ?? 64,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
+          color: background ?? Colors.white,
         ),
         child: Text(text, style: MyTextStyle.actionButtonText,),
       ),

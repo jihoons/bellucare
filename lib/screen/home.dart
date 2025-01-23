@@ -1,5 +1,6 @@
 import 'package:bellucare/screen/maintabs/health.dart';
 import 'package:bellucare/screen/maintabs/medication.dart';
+import 'package:bellucare/screen/maintabs/setting.dart';
 import 'package:bellucare/service/call_service.dart';
 import 'package:bellucare/service/health_service.dart';
 import 'package:bellucare/service/tts_service.dart';
@@ -26,7 +27,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       debug("change tabIndex ${_tabController.index}");
       if (_selectedIndex != _tabController.index) {
@@ -99,9 +100,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
       if (medication.hasValue) {
         return FloatingActionButton.extended(
           onPressed: () {
-            debug("add medication");
-            ref.read(medicationProvider.notifier).addMedication(Medication(name: "혈압약"));
+            context.push("/medication");
           },
+          backgroundColor: Colors.green,
           shape: const CircleBorder(),
           label: Icon(Icons.medication, size: 24, color: Colors.white,),
         );
@@ -124,6 +125,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
         children: [
           HealthMainTab(),
           MedicationMainTab(),
+          SettingMainTab(),
         ]
       ),
       floatingActionButton: getFloatingButton(),
@@ -149,6 +151,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
           BottomNavigationBarItem(
             icon: Icon(Icons.medication, color: Colors.white),
             label: '복용약',
+            // activeIcon: Icon(Icons.medication, color: Colors.red,),
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.medication, color: Colors.white),
+            label: '설정',
             // activeIcon: Icon(Icons.medication, color: Colors.red,),
           ),
         ]
