@@ -2,7 +2,7 @@ import 'package:bellucare/screen/maintabs/health.dart';
 import 'package:bellucare/screen/maintabs/medication.dart';
 import 'package:bellucare/service/call_service.dart';
 import 'package:bellucare/service/health_service.dart';
-import 'package:bellucare/service/telephone_serivce.dart';
+import 'package:bellucare/service/tts_service.dart';
 import 'package:bellucare/style/text.dart';
 import 'package:bellucare/utils/logger.dart';
 import 'package:flutter/material.dart';
@@ -112,6 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(ttsServiceProvider);
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,

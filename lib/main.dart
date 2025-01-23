@@ -1,11 +1,13 @@
 import 'dart:io';
 
+import 'package:bellucare/api/user_api.dart';
 import 'package:bellucare/firebase_options.dart';
+import 'package:bellucare/model/user.dart';
 import 'package:bellucare/router.dart';
 import 'package:bellucare/service/device_info_service.dart';
-import 'package:bellucare/service/health_service.dart';
 import 'package:bellucare/service/notification_service.dart';
 import 'package:bellucare/service/permission_service.dart';
+import 'package:bellucare/service/storage_service.dart';
 import 'package:bellucare/style/colors.dart';
 import 'package:bellucare/utils/logger.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -13,13 +15,25 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initFirebase();
   await initCurrentState();
-  runApp(const MyApp());
+  var userInfo = await getUserInfo();
+
+  var router = createRouter(userInfo == null);
+  runApp(MyApp(router));
+}
+
+Future<User?> getUserInfo() async {
+  String token = await StorageService().getData(StorageService.userTokenKey);
+  if (token.isEmpty) {
+    return null;
+  }
+  return await UserApi().fetchUserByToken(token);
 }
 
 Future<void> initFirebase() async {
@@ -51,7 +65,8 @@ Future<void> initCurrentState() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp(this.router, {super.key});
+  final GoRouter router;
 
   // This widget is the root of your application.
   @override
@@ -83,7 +98,7 @@ class MyApp extends StatelessWidget {
               ),
               scaffoldBackgroundColor: mainBackgroundColor,
               useMaterial3: true),
-          routerConfig: createRouter(true),
+          routerConfig: router,
         )
     );
   }
