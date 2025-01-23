@@ -12,6 +12,7 @@ import 'package:flutter_callkit_incoming/entities/call_kit_params.dart';
 import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 class CallReceiveScreen extends ConsumerStatefulWidget {
   const CallReceiveScreen({
@@ -32,6 +33,7 @@ class _CallReceiveScreenState extends ConsumerState<CallReceiveScreen> {
   Timer? _timer;
   int _start = 0;
   late _ActionInfo actionInfo;
+  final ImagePicker picker = ImagePicker();
 
   void startTimer() {
     const oneSec = Duration(seconds: 1);
@@ -87,7 +89,9 @@ class _CallReceiveScreenState extends ConsumerState<CallReceiveScreen> {
 
     Future.delayed(Duration(milliseconds: 200), () async {
       await ref.read(ttsServiceProvider.notifier).speak(actionInfo.voice);
-      listen();
+      if (mounted) {
+        listen();
+      }
     },);
 
     receive();
@@ -108,7 +112,7 @@ class _CallReceiveScreenState extends ConsumerState<CallReceiveScreen> {
         }
       } else {
         if (text.length > 3) {
-          await ref.read(ttsServiceProvider.notifier).speak("그러시군요. 오늘도 좋은 하루 보내세요.");
+          await ref.read(ttsServiceProvider.notifier).speak("그렇군요. 오늘도 좋은 하루 보내세요.");
           endCall();
         } else {
           await ref.read(ttsServiceProvider.notifier).speak("조금 더 길게 애기해 주세요.");
@@ -135,7 +139,7 @@ class _CallReceiveScreenState extends ConsumerState<CallReceiveScreen> {
       await FlutterCallkitIncoming.endAllCalls();
       calling = null;
     }
-    if (context.mounted) {
+    if (mounted) {
       context.pop();
     }
   }
@@ -160,11 +164,33 @@ class _CallReceiveScreenState extends ConsumerState<CallReceiveScreen> {
               text: text,
               onTap: () async {
                 debug("click $text");
-                ref.read(ttsServiceProvider.notifier).speak("그러셨군요");
+                await ref.read(ttsServiceProvider.notifier).speak("그렇군요");
                 endCall();
               }
           );
         }),
+        ButtonGroups(
+          children: [
+            Button(
+                text: "카메라 찍기",
+                onTap: () async {
+                  final XFile? photo = await picker.pickImage(source: ImageSource.camera);
+                  if (photo != null) {
+                    debug("photho $photo");
+                  }
+                }
+            ),
+            Button(
+                text: "사진 선택",
+                onTap: () async {
+                  final List<XFile> images = await picker.pickMultiImage();
+                  if (images.isNotEmpty) {
+                    debug("image count: ${images.length}");
+                  }
+                }
+            )
+          ]
+        ),
       ]
     );
   }
