@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:bellucare/api/user_api.dart';
+import 'package:bellucare/model/user.dart';
 import 'package:bellucare/provider/user_provider.dart';
 import 'package:bellucare/service/storage_service.dart';
 import 'package:bellucare/service/telephone_serivce.dart';
@@ -37,7 +40,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void requestCode() async {
-    sessionKey = await UserApi().requestAuthenticationCode(_phoneNumberController.text);
+    phoneNumber = _phoneNumberController.text;
+    sessionKey = await UserApi().requestAuthenticationCode(phoneNumber);
     if (!requestAuthenticationCode) {
       setState(() {
         requestAuthenticationCode = true;
@@ -50,6 +54,64 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _phoneNumberController.dispose();
     _verificationController.dispose();
     super.dispose();
+  }
+
+  void onClickVerify() async {
+    debug("phoneNumber: $phoneNumber");
+    debug("sessionKey: $sessionKey");
+    debug("text: ${_verificationController.text}");
+    var result = await UserApi().validateAuthenticationCode(phoneNumber, sessionKey, _verificationController.text);
+    if (result == null) {
+      setState(() {
+        message = "인증 번호를 확인해 주세요.";
+      });
+    } else {
+      processVerify(result);
+    }
+  }
+
+  void processVerify(VerifyResponse result) async {
+    switch(result.status) {
+      case VerifyStatus.newUser:
+        processNewUser(result.token!);
+        break;
+      case VerifyStatus.alreadyRegistered:
+        processRegisteredUser(result.token!);
+        break;
+      case VerifyStatus.expiried:
+        processExpired();
+        break;
+      case VerifyStatus.wrongCode:
+        processWrongCode();
+        break;
+    }
+    // ref.read(userProvider.notifier).state = result.user;
+    // TokenManager().accessToken = result.tokens!.accessToken;
+    // TokenManager().refreshToken = result.tokens!.refreshToken;
+    // await StorageService().saveData(StorageService.userTokenKey, result.tokens!.refreshToken);
+    // if (mounted) {
+    //   context.replace("/");
+    // }
+  }
+
+  void processNewUser(String token) {
+    context.push("/signup", extra: TemporaryInfo(phoneNumber, token));
+  }
+
+  void processExpired() {
+    setState(() {
+      message = "인증 시간이 초과되었습니다. 인증번호를 재요청하세요.";
+    });
+  }
+
+  void processRegisteredUser(String token) {
+    context.push("/userCheck", extra: TemporaryInfo(phoneNumber, token));
+  }
+
+  void processWrongCode() {
+    setState(() {
+      message = "인증번호를 확인하세요.";
+    });
   }
 
   Widget getButtons() {
@@ -78,18 +140,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             text: "확인",
             width: width,
             onTap: () async {
-              var result = await UserApi().validateAuthenticationCode(phoneNumber, sessionKey, _verificationController.text);
-              if (result == null) {
-                setState(() {
-                  message = "인증 번호를 확인해 주세요.";
-                });
-              } else {
-                ref.read(userProvider.notifier).state = result.user;
-                TokenManager().accessToken = result.accessToken;
-                TokenManager().refreshToken = result.refreshToken;
-                await StorageService().saveData(StorageService.userTokenKey, result.refreshToken);
-                context.replace("/");
-              }
+              onClickVerify();
             }
         ),
       ],
@@ -148,4 +199,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
     );
   }
+}
+
+class TemporaryInfo {
+  TemporaryInfo(this.phoneNumber, this.token);
+  final String phoneNumber;
+  final String token;
 }

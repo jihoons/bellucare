@@ -1,4 +1,4 @@
-import 'package:bellucare/service/storage_service.dart';
+import 'package:bellucare/provider/user_provider.dart';
 import 'package:bellucare/widget/button.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,8 +22,8 @@ class SettingMainTab extends ConsumerWidget {
         ),
         Button(
           text: "로그아웃",
-          onTap: () async {
-            await StorageService().removeData(StorageService.userTokenKey);
+          onTap: () {
+            ref.read(userProvider.notifier).logout();
             context.replace("/login");
           }
         ),

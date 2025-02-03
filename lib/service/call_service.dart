@@ -95,7 +95,7 @@ class CallService {
       android: AndroidParams(
         isCustomNotification: true,
         isShowLogo: false,
-        ringtonePath: "empty_ringtone",
+        // ringtonePath: "empty_ringtone",
         backgroundColor: '#0F295F',
         actionColor: '#4CAF50',
         textColor: '#ffffff',

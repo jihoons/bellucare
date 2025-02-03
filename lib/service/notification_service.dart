@@ -96,6 +96,7 @@ class NotificationService {
   }
 
   String getMessageId(RemoteMessage message) {
+    debug("fcm message: ${message.toMap()}");
     if (Platform.isAndroid) {
       return message.notification?.android?.tag ?? "";
     } else {

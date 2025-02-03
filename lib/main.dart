@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:bellucare/api/user_api.dart';
 import 'package:bellucare/firebase_options.dart';
 import 'package:bellucare/model/user.dart';
+import 'package:bellucare/provider/user_provider.dart';
 import 'package:bellucare/router.dart';
+import 'package:bellucare/service/config_service.dart';
 import 'package:bellucare/service/device_info_service.dart';
 import 'package:bellucare/service/notification_service.dart';
 import 'package:bellucare/service/permission_service.dart';
@@ -20,28 +22,18 @@ import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ConfigService().init();
   await initFirebase();
   await initCurrentState();
-  var userInfo = await getUserInfo();
 
-  var router = createRouter(userInfo == null);
-  runApp(MyApp(router));
-}
-
-Future<User?> getUserInfo() async {
-  String token = await StorageService().getData(StorageService.userTokenKey);
-  if (token.isEmpty) {
-    return null;
-  }
-  return await UserApi().fetchUserByToken(token);
+  runApp(MyApp(appRouter));
 }
 
 Future<void> initFirebase() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  var token = await FirebaseMessaging.instance.getToken();
-  debug("====> $token");
+
   NotificationService.instance.init();
 }
 
